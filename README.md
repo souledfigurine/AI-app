@@ -12,7 +12,7 @@ This app lets you:
 
 ---
 
-##🚀 How to Use It
+## 🚀 How to Use It
 
 ### 1. Upload Your File
 
@@ -44,7 +44,7 @@ This app lets you:
 
 ---
 
-##💬 Example Questions
+## 💬 Example Questions
 
 - Try asking things like:
   - "List the top 5 products by profit"
