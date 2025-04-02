@@ -42,7 +42,8 @@ class DataFile:
 
     def ask_question(self, question):
         st.subheader("GPT Answer")
-        prompt = f"""You are a data assistant working with a pandas dataframe called `df`. Here's a preview of the data:
+        prompt = f"""You are a data assistant working with a pandas 
+        dataframe called `df`. Here's a preview of the data:
 
 {self.df.head(15).to_csv(index=False)}
 
@@ -52,8 +53,6 @@ Respond ONLY with Python code using `df`, and end with a variable `output` that 
 Do NOT limit the number of rows in the output. Do NOT use `.head()`, `.iloc`, or any row slicing.
 Return the full filtered DataFrame as `output`. Do not include markdown or comments — just raw Python code.
 """
-
-
         response = get_cached_response(prompt, "gpt-3.5-turbo")
 
         code = response.choices[0].message.content
@@ -80,7 +79,6 @@ Return the full filtered DataFrame as `output`. Do not include markdown or comme
         except Exception as e:
             st.error(f"Error running code: {e}")
 
-
 class MultiFileApp:
     def __init__(self):
         self.files = {}
@@ -91,7 +89,8 @@ class MultiFileApp:
         if "prompt_history" not in st.session_state:
             st.session_state.prompt_history = []
 
-        uploaded = st.file_uploader("Upload multiple CSV or Excel files", type=["csv", "xls", "xlsx"], accept_multiple_files=True)
+        uploaded = st.file_uploader("Upload multiple CSV or Excel files",
+            type=["csv", "xls", "xlsx"], accept_multiple_files=True)
 
         if uploaded:
             for f in uploaded:
@@ -105,7 +104,8 @@ class MultiFileApp:
 
             data = self.files[selected]
 
-            num = st.sidebar.number_input("Top N rows", min_value=1, max_value=len(data.df), value=5)
+            num = st.sidebar.number_input("Top N rows", min_value=1,
+                max_value=len(data.df), value=5)
             data.preview(num)
             
             with st.expander("Prompt History", expanded=True):
@@ -116,7 +116,6 @@ class MultiFileApp:
                             if st.button(f"🗂 {item['question']}", key=f"history_{i}"):
                                 data.ask_question(item["question"])
 
-                # Apply scroll to the *parent* container
                 st.markdown("""
                     <style>
                     [data-testid="stExpander"] div[data-testid="stVerticalBlock"] > div {
@@ -130,7 +129,6 @@ class MultiFileApp:
                 st.session_state.prompt_history = [
                     item for item in st.session_state.prompt_history if item["file"] != selected
                 ]
-
 
             question = st.text_input("Ask a question about this file", key="question_input")
             if st.button("Submit Question"):
@@ -151,7 +149,6 @@ class MultiFileApp:
             # If user clicked on a past history item or just submitted one
             if "last_question" in st.session_state:
                 data.ask_question(st.session_state.last_question)
-
 
 # Run the app
 if __name__ == "__main__":
