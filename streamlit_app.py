@@ -9,6 +9,16 @@ load_dotenv()
 # OpenAI client
 client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
+@st.cache_data(show_spinner=False)
+def get_cached_response(prompt, model):
+    return client.chat.completions.create(
+        model=model,
+        messages=[
+            {"role": "system", "content": "You are a helpful data assistant who only outputs code using pandas."},
+            {"role": "user", "content": prompt}
+        ]
+    )
+
 class DataFile:
     def __init__(self, name, file):
         self.name = name
@@ -38,17 +48,13 @@ class DataFile:
 
 The user asked: "{question}"
 
-Respond ONLY with Python code using `df`, and end with a variable `output` that I can display. Do not include markdown or formatting — just raw Python code.
+Respond ONLY with Python code using `df`, and end with a variable `output` that I can display.
+Do NOT limit the number of rows in the output. Do NOT use `.head()`, `.iloc`, or any row slicing.
+Return the full filtered DataFrame as `output`. Do not include markdown or comments — just raw Python code.
 """
 
 
-        response = client.chat.completions.create(
-            model="gpt-3.5-turbo",
-            messages=[
-                {"role": "system", "content": "You are a helpful data assistant who only outputs code using pandas."},
-                {"role": "user", "content": prompt}
-            ]
-        )
+        response = get_cached_response(prompt, "gpt-3.5-turbo")
 
         code = response.choices[0].message.content
         code = code.strip("`")                  # Remove all backticks
@@ -65,7 +71,8 @@ Respond ONLY with Python code using `df`, and end with a variable `output` that 
                 "Number of rows to display from the result",
                 min_value=1,
                 max_value=len(output),
-                value=min(5, len(output))
+                value=min(5, len(output)),
+                key=f"rows_{self.name}_{question}"
                 )
                 st.dataframe(output.head(num_rows_to_show))
             else:
@@ -81,6 +88,9 @@ class MultiFileApp:
     def run(self):
         st.title("AI application")
 
+        if "prompt_history" not in st.session_state:
+            st.session_state.prompt_history = []
+
         uploaded = st.file_uploader("Upload multiple CSV or Excel files", type=["csv", "xls", "xlsx"], accept_multiple_files=True)
 
         if uploaded:
@@ -89,14 +99,58 @@ class MultiFileApp:
                 self.files[f.name] = data_file
 
             selected = st.sidebar.selectbox("Select a file", list(self.files.keys()))
+            if "last_file" in st.session_state and st.session_state.last_file != selected:
+                st.session_state.last_question = None
+            st.session_state.last_file = selected
+
             data = self.files[selected]
 
             num = st.sidebar.number_input("Top N rows", min_value=1, max_value=len(data.df), value=5)
             data.preview(num)
+            
+            with st.expander("🧾 Prompt History", expanded=True):
+                history_container = st.container()
+                with history_container:
+                    for i, item in enumerate(reversed(st.session_state.prompt_history)):
+                        if item["file"] == selected:
+                            if st.button(f"🗂 {item['question']}", key=f"history_{i}"):
+                                data.ask_question(item["question"])
 
-            question = st.text_input("Ask a question about this file")
-            if question:
-                data.ask_question(question)
+                # Apply scroll to the *parent* container
+                st.markdown("""
+                    <style>
+                    [data-testid="stExpander"] div[data-testid="stVerticalBlock"] > div {
+                        max-height: 250px;
+                        overflow-y: auto;
+                    }
+                    </style>
+                """, unsafe_allow_html=True)
+
+            if st.button("🧹 Clear Prompt History for this file"):
+                st.session_state.prompt_history = [
+                    item for item in st.session_state.prompt_history if item["file"] != selected
+                ]
+
+
+            question = st.text_input("Ask a question about this file", key="question_input")
+            if st.button("💬 Submit Question"):
+                q_clean = question.strip()
+                already_asked = any(
+                    q_clean == item["question"] and selected == item["file"]
+                    for item in st.session_state.prompt_history
+                )
+
+                if q_clean and not already_asked:
+                    st.session_state.prompt_history.append({
+                        "file": selected,
+                        "question": q_clean
+                    })
+
+                st.session_state.last_question = q_clean
+
+            # If user clicked on a past history item or just submitted one
+            if "last_question" in st.session_state:
+                data.ask_question(st.session_state.last_question)
 
 
 # Run the app
