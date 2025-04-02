@@ -108,7 +108,7 @@ class MultiFileApp:
             num = st.sidebar.number_input("Top N rows", min_value=1, max_value=len(data.df), value=5)
             data.preview(num)
             
-            with st.expander("🧾 Prompt History", expanded=True):
+            with st.expander("Prompt History", expanded=True):
                 history_container = st.container()
                 with history_container:
                     for i, item in enumerate(reversed(st.session_state.prompt_history)):
@@ -126,14 +126,14 @@ class MultiFileApp:
                     </style>
                 """, unsafe_allow_html=True)
 
-            if st.button("🧹 Clear Prompt History for this file"):
+            if st.button("Clear Prompt History for this file"):
                 st.session_state.prompt_history = [
                     item for item in st.session_state.prompt_history if item["file"] != selected
                 ]
 
 
             question = st.text_input("Ask a question about this file", key="question_input")
-            if st.button("💬 Submit Question"):
+            if st.button("Submit Question"):
                 q_clean = question.strip()
                 already_asked = any(
                     q_clean == item["question"] and selected == item["file"]
